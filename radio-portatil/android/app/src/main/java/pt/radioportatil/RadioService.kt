@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
@@ -305,12 +306,16 @@ class RadioService : Service(), EstadoRadio {
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_TRANSPORT)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .addAction(Notification.Action.Builder(null, if (pausado) "Retomar" else "Pausa", acao(ACAO_PAUSA, 1)).build())
-            .addAction(Notification.Action.Builder(null, "Próxima", acao(ACAO_PROXIMA, 2)).build())
-            .addAction(Notification.Action.Builder(null, "Desligar", acao(ACAO_DESLIGAR, 3)).build())
+            .addAction(botao(if (pausado) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
+                if (pausado) "Retomar" else "Pausa", acao(ACAO_PAUSA, 1)))
+            .addAction(botao(android.R.drawable.ic_media_next, "Próxima", acao(ACAO_PROXIMA, 2)))
+            .addAction(botao(android.R.drawable.ic_menu_close_clear_cancel, "Desligar", acao(ACAO_DESLIGAR, 3)))
         sessao?.let { b.setStyle(Notification.MediaStyle().setMediaSession(it.sessionToken).setShowActionsInCompactView(0, 1)) }
         return b.build()
     }
+
+    private fun botao(icone: Int, texto: String, acao: PendingIntent) =
+        Notification.Action.Builder(Icon.createWithResource(this, icone), texto, acao).build()
 
     private fun criarSessaoMultimedia() {
         val s = MediaSession(this, "RadioPortatil")

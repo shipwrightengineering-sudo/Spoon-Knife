@@ -357,7 +357,7 @@ class MainActivity : Activity() {
         painelControlo.visibility = if (noAr) View.VISIBLE else View.GONE
         s?.erro?.let { textoInfo.text = it }
 
-        if (noAr && s != null) {
+        if (noAr) {
             val f = s.faixaAtual
             val erroMotor = s.erroMotor
             textoFaixa.text = when {

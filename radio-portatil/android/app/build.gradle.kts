@@ -44,7 +44,6 @@ android {
     lint {
         abortOnError = false
         textReport = true
-        textOutput = file("stdout")
     }
     kotlinOptions {
         jvmTarget = "17"

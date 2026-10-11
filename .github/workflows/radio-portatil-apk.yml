@@ -31,6 +31,7 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease lintRelease
           cp app/build/outputs/apk/release/app-release.apk RadioPortatil.apk
+          cat app/build/reports/lint-results-release.txt || true
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
