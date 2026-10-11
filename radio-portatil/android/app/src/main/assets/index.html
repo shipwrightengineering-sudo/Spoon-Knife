@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#121214">
+<title>Rádio Portátil</title>
+<style>
+  :root { --fundo:#121214; --cartao:#1e1e22; --linha:#2e2e34; --texto:#f2f2f4; --cinza:#a0a0a8; --cor:#e5484d; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--fundo); color:var(--texto); }
+  main { max-width:480px; margin:0 auto; padding:24px 16px 48px; }
+  header { text-align:center; }
+  h1 { font-size:1.5em; margin:0; }
+  .aovivo { display:inline-flex; align-items:center; gap:6px; color:var(--cor); font-weight:600; font-size:.85em; letter-spacing:.08em; margin-top:6px; }
+  .aovivo::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--cor); animation:pulsar 1.4s infinite; }
+  @keyframes pulsar { 50% { opacity:.25; } }
+  .capa { width:220px; height:220px; margin:24px auto 0; border-radius:18px; background:var(--cartao) center/cover no-repeat;
+          display:flex; align-items:center; justify-content:center; font-size:72px; }
+  #titulo { font-size:1.25em; font-weight:700; text-align:center; margin:18px 0 4px; min-height:1.3em; }
+  #artista { text-align:center; color:var(--cinza); min-height:1.2em; }
+  .barra { height:4px; background:var(--linha); border-radius:2px; margin:16px 0 6px; overflow:hidden; }
+  .barra div { height:100%; width:0; background:var(--cor); transition:width 1s linear; }
+  .tempos { display:flex; justify-content:space-between; color:var(--cinza); font-size:.8em; }
+  #tocar { display:block; margin:22px auto 8px; width:84px; height:84px; border-radius:50%; border:0; background:var(--cor);
+           color:#fff; font-size:34px; cursor:pointer; box-shadow:0 8px 24px rgba(229,72,77,.35); }
+  #estado { text-align:center; color:var(--cinza); font-size:.9em; min-height:1.2em; }
+  section { background:var(--cartao); border-radius:16px; padding:16px; margin-top:22px; }
+  h2 { font-size:1em; margin:0 0 10px; }
+  ol { margin:0; padding-left:20px; color:var(--cinza); }
+  input { width:100%; padding:12px; border-radius:10px; border:1px solid var(--linha); background:var(--fundo); color:var(--texto); font-size:1em; }
+  ul { list-style:none; margin:10px 0 0; padding:0; max-height:360px; overflow-y:auto; }
+  li { display:flex; align-items:center; gap:10px; padding:10px 2px; border-bottom:1px solid var(--linha); }
+  li span { flex:1; min-width:0; }
+  li small { display:block; color:var(--cinza); }
+  li button { border:0; border-radius:16px; padding:8px 12px; background:var(--linha); color:var(--texto); cursor:pointer; white-space:nowrap; }
+  #aviso { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#333; color:#fff; padding:12px 18px;
+           border-radius:12px; opacity:0; transition:opacity .3s; pointer-events:none; max-width:90%; text-align:center; }
+  .oculto { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="estacao">📻 Rádio Portátil</h1>
+    <div class="aovivo">AO VIVO</div>
+  </header>
+
+  <div class="capa" id="capa">🎵</div>
+  <div id="titulo">—</div>
+  <div id="artista"></div>
+  <div class="barra"><div id="progresso"></div></div>
+  <div class="tempos"><span id="decorrido">0:00</span><span id="ouvintes"></span><span id="total"></span></div>
+
+  <button id="tocar" aria-label="Ouvir">▶</button>
+  <div id="estado">Carrega para ouvir</div>
+
+  <section id="secFila" class="oculto">
+    <h2>A seguir</h2>
+    <ol id="fila"></ol>
+  </section>
+
+  <section id="secPedidos" class="oculto">
+    <h2>🙋 Pedir uma música</h2>
+    <input id="pesquisa" type="search" placeholder="Pesquisar música ou artista…">
+    <ul id="lista"></ul>
+  </section>
+</main>
+<div id="aviso"></div>
+<audio id="audio" preload="none"></audio>
+
+<script>
+const $ = id => document.getElementById(id);
+const audio = $('audio');
+let querOuvir = false, versaoCapa = -1, faixas = [], pedidosLigados = false;
+
+function mmss(s) { s = Math.max(0, s|0); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
+function aviso(t) { const a = $('aviso'); a.textContent = t; a.style.opacity = 1; clearTimeout(a._t); a._t = setTimeout(() => a.style.opacity = 0, 3000); }
+
+function ligar() {
+  audio.src = '/stream.aac?t=' + Date.now();
+  audio.play().catch(() => {});
+  $('estado').textContent = 'A ligar…';
+}
+function parar() {
+  audio.pause(); audio.removeAttribute('src'); audio.load();
+}
+const semAac = !audio.canPlayType('audio/aac') && !audio.canPlayType('audio/mp4; codecs="mp4a.40.2"');
+if (semAac) $('estado').innerHTML = 'Este navegador não toca AAC. Abre no <b>Chrome</b> ou no <b>Safari</b>,<br>ou usa o VLC com o link <b>' + location.origin + '/stream.aac</b>';
+$('tocar').onclick = () => {
+  querOuvir = !querOuvir;
+  $('tocar').textContent = querOuvir ? '■' : '▶';
+  if (querOuvir) ligar(); else { parar(); $('estado').textContent = 'Parado'; }
+};
+audio.addEventListener('playing', () => $('estado').textContent = 'A ouvir em direto');
+audio.addEventListener('waiting', () => $('estado').textContent = 'A carregar…');
+// se a ligação cair (ex.: Wi-Fi fraco), volta a ligar sozinho
+function religar() { if (querOuvir) { $('estado').textContent = 'Ligação perdida, a tentar de novo…'; setTimeout(() => querOuvir && ligar(), 2000); } }
+audio.addEventListener('error', religar);
+audio.addEventListener('ended', religar);
+audio.addEventListener('stalled', () => setTimeout(() => { if (querOuvir && audio.readyState < 3) ligar(); }, 8000));
+
+async function atualizar() {
+  try {
+    const e = await (await fetch('/estado', {cache:'no-store'})).json();
+    document.title = e.estacao;
+    $('estacao').textContent = '📻 ' + e.estacao;
+    $('titulo').textContent = e.titulo || (e.faixas ? '—' : 'Sem músicas');
+    $('artista').textContent = (e.artista || '') + (e.pausado ? '  (em pausa)' : '');
+    $('decorrido').textContent = mmss(e.segundos);
+    $('total').textContent = e.duracao ? mmss(e.duracao) : '';
+    $('progresso').style.width = e.duracao ? Math.min(100, 100 * e.segundos / e.duracao) + '%' : '0';
+    $('ouvintes').textContent = e.ouvintes + (e.ouvintes === 1 ? ' ouvinte' : ' ouvintes');
+    if (e.capa !== versaoCapa) {
+      versaoCapa = e.capa;
+      const c = $('capa');
+      if (e.capa) { c.style.backgroundImage = 'url(/capa?v=' + e.capa + ')'; c.textContent = ''; }
+      else { c.style.backgroundImage = ''; c.textContent = '🎵'; }
+    }
+    $('secFila').classList.toggle('oculto', !e.fila.length);
+    $('fila').innerHTML = '';
+    e.fila.forEach(t => { const li = document.createElement('li'); li.style.display = 'list-item'; li.style.border = '0'; li.style.padding = '2px 0'; li.textContent = t; $('fila').appendChild(li); });
+    if (e.pedidos !== pedidosLigados) {
+      pedidosLigados = e.pedidos;
+      $('secPedidos').classList.toggle('oculto', !pedidosLigados);
+      if (pedidosLigados && !faixas.length) carregarFaixas();
+    }
+    if ('mediaSession' in navigator && e.titulo) {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: e.titulo, artist: e.artista || e.estacao, album: e.estacao,
+        artwork: e.capa ? [{ src: '/capa?v=' + e.capa, sizes: '512x512' }] : [] });
+    }
+  } catch (_) {}
+}
+
+async function carregarFaixas() {
+  try { faixas = await (await fetch('/faixas')).json(); desenharLista(); } catch (_) {}
+}
+
+function desenharLista() {
+  const q = $('pesquisa').value.trim().toLowerCase();
+  const ul = $('lista'); ul.innerHTML = '';
+  const res = faixas.filter(f => !q || (f.t + ' ' + f.a).toLowerCase().includes(q)).slice(0, 150);
+  for (const f of res) {
+    const li = document.createElement('li');
+    const s = document.createElement('span');
+    s.textContent = f.t;
+    if (f.a) { const sm = document.createElement('small'); sm.textContent = f.a; s.appendChild(sm); }
+    const b = document.createElement('button');
+    b.textContent = 'Pedir';
+    b.onclick = async () => {
+      try {
+        const r = await (await fetch('/pedir?id=' + f.id, { method: 'POST' })).json();
+        aviso(r.mensagem); atualizar();
+      } catch (_) { aviso('Não foi possível enviar o pedido'); }
+    };
+    li.append(s, b); ul.appendChild(li);
+  }
+  if (!res.length) { const li = document.createElement('li'); li.textContent = 'Nada encontrado'; ul.appendChild(li); }
+}
+$('pesquisa').addEventListener('input', desenharLista);
+
+atualizar();
+setInterval(atualizar, 3000);
+</script>
+</body>
+</html>

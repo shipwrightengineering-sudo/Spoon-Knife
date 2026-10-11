@@ -1,0 +1,50 @@
+name: Rádio Portátil APK
+
+on:
+  push:
+    paths:
+      - "radio-portatil/android/**"
+      - ".github/workflows/radio-portatil-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: radio-portatil/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compilar APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease lintRelease
+          cp app/build/outputs/apk/release/app-release.apk RadioPortatil.apk
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RadioPortatil
+          path: radio-portatil/android/RadioPortatil.apk
+
+      - name: Publicar para descarregar no telemóvel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete radio-portatil --yes --cleanup-tag || true
+          gh release create radio-portatil RadioPortatil.apk \
+            --target "$GITHUB_SHA" \
+            --title "Rádio Portátil (versão ${GITHUB_RUN_NUMBER})" \
+            --notes "Descarrega o RadioPortatil.apk no telemóvel e instala-o. Compilado a partir de ${GITHUB_SHA::7}." \
+            --prerelease

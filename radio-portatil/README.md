@@ -1,5 +1,7 @@
 # 📻 Rádio Portátil
 
+> **Novo:** já existe a app Android completa, sem precisar do Termux. Vê [`android/`](android/README.md).
+
 Transforma o teu smartphone (testado a pensar no Xiaomi Redmi Note 13 Pro) numa
 estação de rádio: as tuas músicas são emitidas **em direto**, e toda a gente
 ligada ao teu Wi-Fi/hotspot ouve **a mesma música ao mesmo tempo**, só a abrir
